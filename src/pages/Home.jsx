@@ -1,7 +1,11 @@
-import React from 'react';
+// eslint-disable-next-line no-unused-vars
+import React, { useRef } from 'react';
+import qs from 'qs'
 import {useDispatch, useSelector} from 'react-redux'
+import { useNavigate } from 'react-router';
 
-import {setCategoryId,setCurrentPage} from '../redux/slices/filterSlice';
+
+import {setCategoryId,setCurrentPage,setFilters} from '../redux/slices/filterSlice';
 import Categories from '../components/Categories';
 import Sort from '../components/Sort';
 import PizzaBlock from '../components/PizzaBlock';
@@ -10,22 +14,46 @@ import Pagination from '../components/Pagination';
 import { SearchContext } from '../App';
 
 const Home = () => {
+  const navigate = useNavigate();
   const dispatch = useDispatch();
-  const {categoryId, sort, currentPage} = useSelector((state)=>state.filter)
-  const sortType = sort.sortProperty;
+  const isSearch = React.useRef(false);
+
+const { categoryId, sort, currentPage, sortList } = useSelector((state) => state.filter);
+const sortType = sort.sortProperty;
 
 
   const {searchValue} = React.useContext(SearchContext)
   const [items, setItems] = React.useState([]);
   const [isLoading, setIsLoading] = React.useState(true);
 
-  const onChangeCategory=(id)=>{
-    dispatch(setCategoryId(id));
+  const onChangeCategory=(idx)=>{
+    dispatch(setCategoryId(idx));
   }
 
-  const onChangePage = number =>{
-    dispatch(setCurrentPage(number))
+  const onChangePage = page =>{
+    dispatch(setCurrentPage(page))
   }
+
+
+
+React.useEffect(() => {
+  if (sortList) {
+    if (window.location.search) {
+      const params = qs.parse(window.location.search.substring(1));
+      const sort = sortList.find((obj) => obj.sortProperty === params.sortProperty);
+
+      dispatch(
+        setFilters({
+          ...params,
+          sort,
+        })
+      );
+      isSearch.current = true;
+    }
+  }
+}, [dispatch, sortList]);
+
+  
 
   const sortBy = sortType.replace('-',''); 
   const order = sortType.includes('-')?'asc':'desc';
@@ -41,7 +69,18 @@ const Home = () => {
     setIsLoading(false);
     });
     window.scrollTo(0,0);
-  },[categoryId, sortType, searchValue, currentPage, category, sortBy, order, search])
+
+
+  },[categoryId, sort.sortPropertype, searchValue, currentPage, category, sortBy, order, search])
+
+  React.useEffect(()=>{
+    const queryString = qs.stringify({
+      sortProperty: sort.sortProperty,
+      categoryId,
+      currentPage,
+    });
+    navigate(`?${queryString}`);
+  },[categoryId, sort.sortPropertype, currentPage, sort.sortProperty, navigate])
 
   const pizzas = items.map((obj)=><PizzaBlock key={obj.id} {...obj}/>);
   const skeletons = [...new Array(6)].map((_,index)=><Skeleton key={index}/>);
